@@ -1,24 +1,29 @@
 public class Square {
-	// TODO: Make the owner a final field as it can only be set once
-	private char owner = ' ';
+  private Player owner;
 
-	public Square()
+  public Square() {
+    this.owner = new Player("default", ' ', Player.PlayerType.DEFAULT);
+  }
 
-	{
-	}
+  public Player getOwner() {
+    return this.owner;
+  }
 
-	public char getOwner() {
-		return this.owner;
-	}
+  public final void setOwner(Player player) {
+    this.owner = player;
+  }
 
-	public void setOwner(char owner) {
-		this.owner = owner;
-	}
+  public String printSquare() {
+    String r = String.format("[%c]", this.owner.getRepre());
+    return r;
+  }
 
-	public String printSquare() {
-		String r = String.format("[%c]", this.owner);
-		return r;
+  public boolean isAvailableSquare() {
+    if (this.getOwner().getPlayertype() != Player.PlayerType.DEFAULT) {
+      return false;
+    }
+    return true;
 
-	}
+  }
 
 }
