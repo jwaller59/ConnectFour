@@ -17,7 +17,9 @@ public class ConnectFourGame {
   // TODO: Create some kind Turn Interface for CPU and Player Turns
   // Turn interface will ensure that they will have the correct output
 
-  // TODO Add in correct exeptions for classes
+  // TODO: Add in correct exeptions for classes
+  // TODO: Add custom Display class module (so we can easily use different
+  // outputs)
   private Board board;
   private int round;
   private BufferedReader reader;
@@ -63,7 +65,7 @@ public class ConnectFourGame {
   public void cpuPlay() {
     // We generate two random numbers between our row and column sizes
     // and then keep seeing if this location is avaiable in our board
-    // once the space is available we enter the balue and return
+    // once the space is available we enter the value and return
     Coords<Integer, Integer> coords = this.generate_coords();
     this.board.setSquareOwner(coords, this.player2);
     HashSet<Coords<Integer, Integer>> boardState = new HashSet<>();

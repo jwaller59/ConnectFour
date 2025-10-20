@@ -1,4 +1,4 @@
-public class Player {
+public class Player implements Turn {
   public static enum PlayerType {
     PLAYER1,
     PLAYER2,
