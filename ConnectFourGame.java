@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Array;
 import java.util.HashSet;
 import java.util.Random;
 
@@ -17,11 +18,19 @@ public class ConnectFourGame {
   // TODO: Create some kind Turn Interface for CPU and Player Turns
   // Turn interface will ensure that they will have the correct output
 
-  // TODO: Add in correct exeptions for classes
   // TODO: Add custom Display class module (so we can easily use different
   // outputs)
   private Board board;
   private int round;
+
+  public int getRound() {
+    return round;
+  }
+
+  public void setRound(int round) {
+    this.round = round;
+  }
+
   private BufferedReader reader;
   private final int WINNING_SCORE = 4;
 
@@ -35,27 +44,67 @@ public class ConnectFourGame {
     this.player2 = new Player("Player 2", '2', Player.PlayerType.PLAYER2);
   }
 
+  // TODO: Have player1 and player2 setting prompts during setup (as well as game
+  // size):
+  // provide ability for second player to be CPU or human player. If CPU selected
+  // then we
+  // do different actions for event loop. If player2 selected then we loop through
+  // our normal player event loop
+
   // main event Loop
   public void startGame() {
     // player 1 always goes first
     while (true) {
       try {
         this.printBoard();
-        String input = getUserInput();
-        Coords<Integer, Integer> coords = retrieveCoords(input);
-        this.board.setSquareOwner(coords, this.player1);
-        HashSet<Coords<Integer, Integer>> boardState = new HashSet<>();
-        this.player1.setScore(this.board.checkScore(coords, 0, this.player1, boardState));
-        System.out.println(this.player1.getScore());
+        this.PlayerEventLoop(this.player1);
         this.printBoard();
         this.endGame();
-        this.cpuPlay();
+        this.CpuEventLoop(this.player2);
+        this.endGame();
       } catch (IOException e) {
         System.exit(1);
+      } catch (CoordOutOfBoundsException e) {
+        System.out.println(
+            "The coord provided is out of range for the game board. Please re-enter new coords between the range of");
+      } catch (CoordNotValidCoordException e) {
+        System.out.println(e);
       }
 
     }
 
+  }
+
+  private void PlayerEventLoop(Player player)
+      throws IOException, CoordNotValidCoordException, CoordOutOfBoundsException {
+    // player event loop is as follows
+    // 1) we prompt user for their coord input.
+    // 2) We attempt to add the players token to the required board location (if it
+    // fails we prompt them for location again)
+    // 3) We calculate the score for the player after token successfully entered
+    // 4) We exit the player event loop (and return to the game event loop which
+    // prints the board)
+    while (true) {
+      String input = getUserInput();
+      Coords coords = retrieveCoords(input);
+      if (!this.board.canPlace(coords)) {
+        System.out.println("Cannot place a token here: Try again");
+      } else
+        this.board.setSquareOwner(coords, this.player1);
+      this.player1.setScore(this.board.checkScore(coords, this.player1));
+      System.out.printf("Current Score is %d\n", this.player1.getScore());
+      break;
+    }
+  }
+
+  private void CpuEventLoop(Player player) {
+    // CPU event loop
+    // cpu event loop needs to have a random generator which is stored outside the
+    // CpuEventLoop
+    // This is to ensure we aren't repeatadly calling random on the same seed -
+    // resulting in us
+    // trying to insert the same values in on each CPU turn in subsequent order
+    cpuPlay();
   }
 
   public Board getBoard() {
@@ -63,27 +112,13 @@ public class ConnectFourGame {
   }
 
   public void cpuPlay() {
-    // We generate two random numbers between our row and column sizes
-    // and then keep seeing if this location is avaiable in our board
-    // once the space is available we enter the value and return
-    Coords<Integer, Integer> coords = this.generate_coords();
-    this.board.setSquareOwner(coords, this.player2);
-    HashSet<Coords<Integer, Integer>> boardState = new HashSet<>();
-    this.board.checkScore(coords, 0, this.player2, boardState);
-    this.endGame();
-
-  }
-
-  private Coords<Integer, Integer> generate_coords() {
-    Random gen = new Random(4);
-    Coords<Integer, Integer> coord;
-    do {
-      int x = gen.nextInt() % 6;
-      int y = gen.nextInt() % 4;
-      coord = new Coords<Integer, Integer>(x, y);
-    } while (!this.getBoard().canPlace(coord, this.player2));
-    return coord;
-
+    if (this.player2.getCoords().isEmpty()) {
+      // if our coord list is empty for whatever reason - we just regenerate them
+      this.player2.generate_coords(this.board.getRows(), this.board.getColumns());
+    }
+    Coords coord = this.player2.getCoords().removeFirst();
+    this.board.setSquareOwner(coord, this.player2);
+    this.board.checkScore(coord, this.player2);
   }
 
   public void setPlayer1(int playerChoice) {
@@ -105,17 +140,32 @@ public class ConnectFourGame {
     return input;
   }
 
-  private Coords<Integer, Integer> retrieveCoords(String input) {
+  private Coords retrieveCoords(String input)
+      throws CoordOutOfBoundsException, CoordNotValidCoordException {
     // retrieve the coordinate input as a String and convert
     // to a Coordinate object by splitting our string on a ','
-    String[] splitString = input.split(",");
-    int x = Integer.valueOf(splitString[0]);
-    int y = Integer.valueOf(splitString[1]);
-    return new Coords<Integer, Integer>(x, y);
+    // Also have to throw error if the entered value is not a coord or integer
+    try {
+      String[] splitString = input.split(",");
+      int x = Integer.valueOf(splitString[0]);
+      int y = Integer.valueOf(splitString[1]);
+      if (x > this.board.getRows() || x < 0 || y > this.board.getColumns() || y < 0) {
+        throw new CoordOutOfBoundsException();
+      }
+      return new Coords(x, y);
+    } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+      // If a user does not put in a comma then split function throws a
+      // ArrayIndexOutOfBoundsException
+      // If the user enters any char value e.g a b c etc - then Integer.valueOf throws
+      // a NumberFormatException
+      // NumberFormatException
+      throw new CoordNotValidCoordException();
+    }
+
   }
 
   private boolean isGameOver() {
-    if (this.player1.getScore() == 4 || this.player2.getScore() == 4) {
+    if (this.player1.getScore() == this.WINNING_SCORE || this.player2.getScore() == this.WINNING_SCORE) {
       return true;
     }
     return false;

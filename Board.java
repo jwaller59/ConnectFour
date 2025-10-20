@@ -1,20 +1,45 @@
 import java.util.ArrayList;
 import java.util.HashSet;
 
-// should contain and maintain board state - including returning scores
-record Coords<K, V>(K x, V y) {
-};
-
 public class Board {
   private ArrayList<Row> board;
   private int rows;
   private int columns;
+  private HashSet<Coords> boardState = new HashSet<>();
+
+  public HashSet<Coords> getBoardState() {
+    return boardState;
+  }
+
+  public void setBoardState(HashSet<Coords> boardState) {
+    this.boardState = boardState;
+  }
 
   public Board(int rows, int columns) {
     createBoard(rows, columns);
     this.rows = rows;
     this.columns = columns;
+    this.boardState = new HashSet<Coords>();
+  }
 
+  public void setBoard(ArrayList<Row> board) {
+    this.board = board;
+  }
+
+  public int getRows() {
+    return rows;
+  }
+
+  public void setRows(int rows) {
+    this.rows = rows;
+  }
+
+  public int getColumns() {
+    return columns;
+  }
+
+  public void setColumns(int columns) {
+    this.columns = columns;
   }
 
   public ArrayList<Row> getBoard() {
@@ -41,8 +66,15 @@ public class Board {
     return temp.toString();
   }
 
-  public int checkScore(Coords<Integer, Integer> coords, int currentScore, Player currentPlayer,
-      HashSet<Coords<Integer, Integer>> set) {
+  public int checkScore(Coords coords, Player currentPlayer) {
+    HashSet<Coords> boardState = new HashSet<>();
+    int currentScore = 0;
+    return this.calculateScore(coords, currentScore, currentPlayer, boardState);
+  }
+
+  // FIXME: THIS IS NOW RETURNING PLAYER HAS WON WHEN PLAYER SHOULD NOT HAVE WON
+  public int calculateScore(Coords coords, int currentScore, Player currentPlayer,
+      HashSet<Coords> set) {
     // recursively we check each direction around the original coordinates
     // and then return the maximum value of the opposite cardinal directions.
     // Logically if the output of the sum of our cardinal directions is greater or
@@ -60,11 +92,11 @@ public class Board {
       return currentScore;
     }
     // if the current coords is outside of our boundry
-    if (coords.x() >= this.columns || coords.x() < 0) {
+    if (coords.getX() >= this.columns || coords.getX() < 0) {
       return currentScore;
     }
 
-    if (coords.y() >= this.rows || coords.y() < 0) {
+    if (coords.getY() >= this.rows || coords.getY() < 0) {
       return currentScore;
     }
     // if the owner of the square at the provided coordinate is not our current
@@ -86,11 +118,12 @@ public class Board {
     // We can assume our values match
 
     // check to the left by decreasing our y axis by 1
-    int left = checkScore(new Coords<Integer, Integer>(coords.x(), coords.y() - 1), currentScore + 1, currentPlayer,
+    int left = calculateScore(new Coords(coords.getX(), coords.getY() - 1), currentScore + 1, currentPlayer,
         set);
 
     // check right by increasing x axis by 1
-    int right = checkScore(new Coords<Integer, Integer>(coords.x(), coords.y() + 1), currentScore + 1, currentPlayer,
+    int right = calculateScore(new Coords(coords.getX(), coords.getY() + 1), currentScore + 1,
+        currentPlayer,
         set);
     // sum left and right together as in connect four you can only by having 4
     // tokens
@@ -98,22 +131,23 @@ public class Board {
     int horizontal = Integer.max(left, right);
 
     // now check vertically by incrementing and decrementing the x axis
-    int down = checkScore(new Coords<Integer, Integer>(coords.x() + 1, coords.y()), currentScore + 1, currentPlayer,
+    int down = calculateScore(new Coords(coords.getX() + 1, coords.getY()), currentScore + 1, currentPlayer,
         set);
-    int up = checkScore(new Coords<Integer, Integer>(coords.x() - 1, coords.y()), currentScore + 1, currentPlayer, set);
+    int up = calculateScore(new Coords(coords.getX() - 1, coords.getY()), currentScore + 1, currentPlayer,
+        set);
     // get the total of up and down
     int vertical = Integer.max(up, down);
     // now we have to check diagonally - will start with north east and south west
-    int northEast = checkScore(new Coords<Integer, Integer>(coords.x() - 1, coords.y() + 1), currentScore + 1,
+    int northEast = calculateScore(new Coords(coords.getX() - 1, coords.getY() + 1), currentScore + 1,
         currentPlayer, set);
-    int southWest = checkScore(new Coords<Integer, Integer>(coords.x() + 1, coords.y() - 1), currentScore + 1,
+    int southWest = calculateScore(new Coords(coords.getX() + 1, coords.getY() - 1), currentScore + 1,
         currentPlayer, set);
     // sum them like the others
     int diagonalRight = Integer.max(northEast, southWest);
     // now we do north West + south East
-    int southEast = checkScore(new Coords<Integer, Integer>(coords.x() + 1, coords.y() - 1), currentScore + 1,
+    int southEast = calculateScore(new Coords(coords.getX() + 1, coords.getY() - 1), currentScore + 1,
         currentPlayer, set);
-    int northWest = checkScore(new Coords<Integer, Integer>(coords.x() - 1, coords.y() + 1), currentScore + 1,
+    int northWest = calculateScore(new Coords(coords.getX() - 1, coords.getY() + 1), currentScore + 1,
         currentPlayer, set);
     // sum the directions together
     int diagonalLeft = Integer.max(southEast, northWest);
@@ -125,37 +159,38 @@ public class Board {
     return Integer.max(Integer.max(Integer.max(horizontal, vertical), diagonalRight), diagonalLeft);
   }
 
-  public void setSquareOwner(Coords<Integer, Integer> coords, Player player) {
+  public void setSquareOwner(Coords coords, Player player) {
     // given a Pair containing our coordinates we need to set the square a the coord
     // n
     // to be owned by the Player provided
-    int x = coords.x();
-    int y = coords.y();
-    // get the target square
+    if (!this.canPlace(coords)) {
+      return;
+    }
+    int x = coords.getX();
+    int y = coords.getY();
     Square square = this.board.get(x).squares.get(y);
     square.setOwner(player);
+    this.boardState.add(coords);
+    return;
   }
 
-  public Player getSquareOwner(Coords<Integer, Integer> coords) {
-    return this.board.get(coords.x()).squares.get(coords.y()).getOwner();
+  public Player getSquareOwner(Coords coords) {
+    return this.board.get(coords.getX()).squares.get(coords.getY()).getOwner();
   }
 
-  public boolean canPlace(Coords<Integer, Integer> coords, Player player) {
+  public boolean canPlace(Coords coords) {
     // can only place when the square is empty and has no owner
-    if (coords.x() >= this.rows || coords.x() < 0) {
+    if (coords.getX() >= this.rows || coords.getX() < 0) {
       return false;
     }
-    if (coords.y() >= this.columns || coords.y() < 0) {
+    if (coords.getY() >= this.columns || coords.getY() < 0) {
       return false;
     }
-    if (this.getSquareOwner(coords).getPlayertype() != Player.PlayerType.DEFAULT) {
+    if (this.boardState.contains(coords)) {
       return false;
     }
     return true;
 
   }
-  // TODO: Need to add in error stopping player from adding in a new token over
-  // existing one
-  // this also needs to allow the user to continue with their turn
 
 }
