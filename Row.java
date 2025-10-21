@@ -23,9 +23,7 @@ public class Row extends Square {
     // Create an ArrayList containing the number of squares entered
     for (int i = 0; i < num; i++) {
       this.squares.add(new Square());
-
     }
-
   }
 
   public ArrayList<Square> getSquares() {

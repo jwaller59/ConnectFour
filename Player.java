@@ -1,7 +1,5 @@
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Random;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class Player implements Turn {
@@ -53,6 +51,10 @@ public class Player implements Turn {
     this.coords = new ArrayList<Coords>();
   }
 
+  public Player() {
+    this.coords = new ArrayList<Coords>();
+  }
+
   public PlayerType getPlayertype() {
     return playertype;
   }
@@ -71,7 +73,6 @@ public class Player implements Turn {
     for (int a = 0; a < co.length; a += 2) {
       int x = Math.abs(co[a]) % row;
       int y = Math.abs(co[a + 1]) % column;
-      System.out.printf("coords of %d:%d\n", x, y);
       Coords coord = new Coords(x, y);
       this.coords.add(coord);
     }

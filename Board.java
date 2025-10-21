@@ -72,7 +72,6 @@ public class Board {
     return this.calculateScore(coords, currentScore, currentPlayer, boardState);
   }
 
-  // FIXME: THIS IS NOW RETURNING PLAYER HAS WON WHEN PLAYER SHOULD NOT HAVE WON
   public int calculateScore(Coords coords, int currentScore, Player currentPlayer,
       HashSet<Coords> set) {
     // recursively we check each direction around the original coordinates
@@ -145,9 +144,9 @@ public class Board {
     // sum them like the others
     int diagonalRight = Integer.max(northEast, southWest);
     // now we do north West + south East
-    int southEast = calculateScore(new Coords(coords.getX() + 1, coords.getY() - 1), currentScore + 1,
+    int southEast = calculateScore(new Coords(coords.getX() + 1, coords.getY() + 1), currentScore + 1,
         currentPlayer, set);
-    int northWest = calculateScore(new Coords(coords.getX() - 1, coords.getY() + 1), currentScore + 1,
+    int northWest = calculateScore(new Coords(coords.getX() - 1, coords.getY() - 1), currentScore + 1,
         currentPlayer, set);
     // sum the directions together
     int diagonalLeft = Integer.max(southEast, northWest);

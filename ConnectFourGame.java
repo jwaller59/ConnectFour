@@ -1,9 +1,5 @@
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.lang.reflect.Array;
-import java.util.HashSet;
-import java.util.Random;
+import java.util.stream.Stream;
 
 // Connect Four Class should only control game event loop and user inputs
 // as well as win conditions and computer player inputs
@@ -20,6 +16,10 @@ public class ConnectFourGame {
 
   // TODO: Add custom Display class module (so we can easily use different
   // outputs)
+
+  // TODO: Add custom input class for retrieving user input so we could easily
+  // change input
+  // to come from IO or from web console etc instead of just Std in/out
   private Board board;
   private int round;
 
@@ -31,52 +31,49 @@ public class ConnectFourGame {
     this.round = round;
   }
 
-  private BufferedReader reader;
+  private InputReader input;
   private final int WINNING_SCORE = 4;
+  private Display output;
 
   private Player player1;
   private Player player2;
 
   public ConnectFourGame(int row, int column) {
     this.board = new Board(row, column);
-    this.reader = new BufferedReader(new InputStreamReader(System.in));
+    this.input = new Input();
+    this.output = new Output();
     this.player1 = new Player("Player 1", '1', Player.PlayerType.PLAYER1);
-    this.player2 = new Player("Player 2", '2', Player.PlayerType.PLAYER2);
+    this.player2 = new Player("Player 2", '2', Player.PlayerType.CPU);
   }
 
   // TODO: Have player1 and player2 setting prompts during setup (as well as game
   // size):
-  // provide ability for second player to be CPU or human player. If CPU selected
-  // then we
-  // do different actions for event loop. If player2 selected then we loop through
-  // our normal player event loop
 
   // main event Loop
   public void startGame() {
     // player 1 always goes first
     while (true) {
-      try {
+      Stream.of(this.player1, this.player2).forEach(player -> {
+        this.printSeperator();
         this.printBoard();
-        this.PlayerEventLoop(this.player1);
-        this.printBoard();
-        this.endGame();
-        this.CpuEventLoop(this.player2);
-        this.endGame();
-      } catch (IOException e) {
-        System.exit(1);
-      } catch (CoordOutOfBoundsException e) {
-        System.out.println(
-            "The coord provided is out of range for the game board. Please re-enter new coords between the range of");
-      } catch (CoordNotValidCoordException e) {
-        System.out.println(e);
-      }
-
+        this.printSeperator();
+        this.printTurn(player);
+        this.eventLoopRouting(player);
+        this.isEndGame(player);
+      });
     }
-
   }
 
-  private void PlayerEventLoop(Player player)
-      throws IOException, CoordNotValidCoordException, CoordOutOfBoundsException {
+  private void eventLoopRouting(Player player) {
+    if (player.getPlayertype() == Player.PlayerType.CPU) {
+      this.cpuPlay(player);
+      return;
+    } else {
+      this.PlayerEventLoop(player);
+    }
+  }
+
+  private void PlayerEventLoop(Player player) {
     // player event loop is as follows
     // 1) we prompt user for their coord input.
     // 2) We attempt to add the players token to the required board location (if it
@@ -85,40 +82,43 @@ public class ConnectFourGame {
     // 4) We exit the player event loop (and return to the game event loop which
     // prints the board)
     while (true) {
-      String input = getUserInput();
-      Coords coords = retrieveCoords(input);
-      if (!this.board.canPlace(coords)) {
-        System.out.println("Cannot place a token here: Try again");
-      } else
-        this.board.setSquareOwner(coords, this.player1);
-      this.player1.setScore(this.board.checkScore(coords, this.player1));
-      System.out.printf("Current Score is %d\n", this.player1.getScore());
-      break;
+      try {
+        this.promptUserInput();
+        String input = getUserInput();
+        Coords coords = retrieveCoords(input);
+        if (!this.board.canPlace(coords)) {
+          System.out.println("Cannot place a token here: Try again");
+        } else {
+          this.board.setSquareOwner(coords, player);
+          player.setScore(this.board.checkScore(coords, player));
+          break;
+        }
+      } catch (CoordNotValidCoordException | CoordOutOfBoundsException e) {
+        String output = e.toString();
+        this.output.displayOutput(output);
+      } catch (IOException e) {
+        System.exit(1);
+      }
     }
-  }
-
-  private void CpuEventLoop(Player player) {
-    // CPU event loop
-    // cpu event loop needs to have a random generator which is stored outside the
-    // CpuEventLoop
-    // This is to ensure we aren't repeatadly calling random on the same seed -
-    // resulting in us
-    // trying to insert the same values in on each CPU turn in subsequent order
-    cpuPlay();
   }
 
   public Board getBoard() {
     return this.board;
   }
 
-  public void cpuPlay() {
+  private void promptUserInput() {
+    String output = "Please add your token placement:";
+    this.output.displayOutput(output);
+  }
+
+  private void cpuPlay(Player player) {
     if (this.player2.getCoords().isEmpty()) {
       // if our coord list is empty for whatever reason - we just regenerate them
       this.player2.generate_coords(this.board.getRows(), this.board.getColumns());
     }
     Coords coord = this.player2.getCoords().removeFirst();
-    this.board.setSquareOwner(coord, this.player2);
-    this.board.checkScore(coord, this.player2);
+    this.board.setSquareOwner(coord, player);
+    this.board.checkScore(coord, player);
   }
 
   public void setPlayer1(int playerChoice) {
@@ -130,11 +130,11 @@ public class ConnectFourGame {
   }
 
   public void printBoard() {
-    System.out.println(this.board);
+    this.output.displayOutput(this.board.toString());
   }
 
   public String getUserInput() throws IOException {
-    String input = this.reader.readLine();
+    String input = this.input.readInput();
     // split string into array on comma value
     // this.board.setSquare(val1, val2);
     return input;
@@ -164,23 +164,34 @@ public class ConnectFourGame {
 
   }
 
-  private boolean isGameOver() {
-    if (this.player1.getScore() == this.WINNING_SCORE || this.player2.getScore() == this.WINNING_SCORE) {
-      return true;
+  private boolean isGameOver(Player player) {
+    if (player.getScore() != this.WINNING_SCORE) {
+      return false;
     }
-    return false;
+    return true;
   }
 
-  private void endGame() {
-    if (!isGameOver()) {
+  private void isEndGame(Player player) {
+    if (!isGameOver(player)) {
       return;
     }
-    if (this.player1.getScore() == 4) {
-      System.out.println("Player 1 has won!");
-      System.exit(1);
-    } else
-      System.out.println("Player 2 has won!");
+    printWinningMessage(player);
     System.exit(1);
+  }
+
+  private void printWinningMessage(Player player) {
+    String winner = String.format("Player %s has won!", player.getName());
+    this.output.displayOutput(winner);
+  }
+
+  private void printSeperator() {
+    String sep = "=".repeat(this.board.getRows() * 3);
+    this.output.displayOutput(sep + "\n");
+  }
+
+  private void printTurn(Player player) {
+    String turn = String.format("Its now %s turn! \n", player.getName());
+    this.output.displayOutput(turn);
   }
 
 }

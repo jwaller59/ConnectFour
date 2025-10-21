@@ -1,5 +1,3 @@
-import java.util.Objects;
-
 public class TestConnectFourHelper {
   public static boolean testObjectEquals(Object a, Object b) {
     if (!a.equals(b)) {

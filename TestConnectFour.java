@@ -16,7 +16,6 @@ public class TestConnectFour {
     Coords coords = new Coords(2, 2);
     Player player = new Player("PlayerOne", '1', Player.PlayerType.PLAYER1);
     board.setSquareOwner(coords, player);
-    Square sq = new Square();
     TestConnectFourHelper.testObjectEquals(
         board.getBoard().get(coords.getX()).getSquares().get(coords.getY()).getOwner(),
         player);
